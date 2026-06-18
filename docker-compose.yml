@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gms_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gms_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - gms_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  gms_data:

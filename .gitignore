@@ -1,0 +1,94 @@
+# ====================
+# Python / Backend
+# ====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Alembic compiled
+backend/alembic/__pycache__/
+
+# ====================
+# Environment / Secrets
+# ====================
+.env
+.env.local
+.env.*.local
+.env.docker
+# Keep examples
+!.env.example
+!**/.env.example
+
+# ====================
+# Node / Frontend
+# ====================
+node_modules/
+frontend/dist/
+frontend/build/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vite
+.vite/
+
+# ====================
+# Docker
+# ====================
+# Keep docker-compose.yml, ignore override files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ====================
+# IDE / Editor
+# ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ====================
+# Logs
+# ====================
+*.log
+logs/
+celery*.log
+celerybeat-schedule
+celerybeat.pid
+
+# ====================
+# Testing
+# ====================
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# Vitest
+frontend/coverage/
+
+# ====================
+# Misc
+# ====================
+*.bak
+*.tmp
+*.orig
