@@ -45,6 +45,12 @@ export default function Navbar() {
                     >
                       Users
                     </Link>
+                    <Link
+                      to="/admin/categories"
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Categories
+                    </Link>
                   </>
                 )}
                 <span className="text-sm text-gray-500">{user?.full_name}</span>

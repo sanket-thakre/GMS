@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import HierarchyManagement from "./pages/admin/HierarchyManagement";
 import UserAssignment from "./pages/admin/UserAssignment";
+import CategoryManagement from "./pages/admin/CategoryManagement";
 
 export default function App() {
   return (
@@ -25,13 +26,29 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route 
-            path="/admin/hierarchy" 
-            element={<ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}><HierarchyManagement /></ProtectedRoute>} 
+          <Route
+            path="/admin/hierarchy"
+            element={
+              <ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}>
+                <HierarchyManagement />
+              </ProtectedRoute>
+            }
           />
-          <Route 
-            path="/admin/users" 
-            element={<ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}><UserAssignment /></ProtectedRoute>} 
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}>
+                <UserAssignment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories"
+            element={
+              <ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}>
+                <CategoryManagement />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </main>
