@@ -44,3 +44,29 @@ class TicketOut(BaseModel):
     attachments: list[AttachmentOut] = []
 
     model_config = {"from_attributes": True}
+
+
+class TicketListItem(BaseModel):
+    id: int
+    ticket_number: str
+    status: TicketStatus
+    priority: TicketPriority
+    subcategory_id: int
+    assigned_hierarchy_id: int
+    complainant_id: int
+    created_at: datetime
+    due_date: datetime | None = None
+    # Enrichment from joined relationships (nullable to stay resilient).
+    subcategory_name: str | None = None
+    category_name: str | None = None
+    assigned_office_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class PaginatedTickets(BaseModel):
+    items: list[TicketListItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

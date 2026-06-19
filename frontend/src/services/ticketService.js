@@ -9,3 +9,8 @@ export const createTicket = (formData) =>
   });
 
 export const getTicket = (id) => api.get(`/tickets/${id}`);
+
+// Phase 13: paginated, role-aware list. `params` may include status, priority,
+// category_id, subcategory_id, assigned_hierarchy_id, mine, date_from, date_to,
+// search, sort_by, order, page, page_size. Returns PaginatedTickets.
+export const listTickets = (params = {}) => api.get("/tickets", { params });
