@@ -10,6 +10,8 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const isAdmin = user?.role_name === "Admin" || user?.role_name === "DoM_Admin";
+
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -29,6 +31,22 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {isAdmin && (
+                  <>
+                    <Link
+                      to="/admin/hierarchy"
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Hierarchy
+                    </Link>
+                    <Link
+                      to="/admin/users"
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Users
+                    </Link>
+                  </>
+                )}
                 <span className="text-sm text-gray-500">{user?.full_name}</span>
                 <button
                   onClick={handleLogout}
