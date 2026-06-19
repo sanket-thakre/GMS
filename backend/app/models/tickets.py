@@ -38,3 +38,4 @@ class Ticket(Base):
     subcategory = relationship("GrievanceSubcategory", back_populates="tickets")
     assigned_hierarchy = relationship("Hierarchy", back_populates="assigned_tickets")
     audit_logs = relationship("AuditLog", back_populates="ticket")
+    attachments = relationship("TicketAttachment", back_populates="ticket", cascade="all, delete-orphan")
