@@ -18,3 +18,12 @@ class UserOut(BaseModel):
     role_name: str
 
     model_config = {"from_attributes": True}
+
+
+class UserListItem(UserOut):
+    hierarchy_name: str | None = None
+
+
+class UserAdminUpdate(BaseModel):
+    hierarchy_id: int | None = None
+    role_id: int | None = None

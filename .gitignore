@@ -1,4 +1,17 @@
 # ====================
+# Local portable PostgreSQL (dev only)
+# ====================
+.pgsql/
+.pgdata/
+.pg_download.zip
+.pg_logfile
+
+# Local runtime logs (dev only)
+.uvicorn.out
+.uvicorn.err
+.frontend.out
+
+# ====================
 # Python / Backend
 # ====================
 __pycache__/

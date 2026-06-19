@@ -34,16 +34,17 @@ Reuse the existing `Hierarchy` model (`app/models/hierarchies.py`) — fields: `
 Import `HierarchyLevel` from `app.models.hierarchies`.
 
 **Endpoints (`app/api/v1/endpoints/hierarchies.py`, router prefix `/hierarchies`):** protect every write with `Depends(RoleChecker(["Admin", "DoM_Admin"]))`. Reads may use `Depends(get_current_user)`.
-- `POST /` → create office. Validate `parent_id` exists if provided. Returns `HierarchyOut` (201).
-- `GET /` → list all offices. Optional query param `level: HierarchyLevel | None` to filter. Returns `list[HierarchyOut]`.
-- `GET /tree` → returns the nested `list[HierarchyTreeNode]` built from roots (`parent_id is None`) downward. Build in Python by grouping children by `parent_id`.
-- `GET /{hierarchy_id}` → single office or 404.
-- `PUT /{hierarchy_id}` → update name/level/parent. Reject if `parent_id == hierarchy_id` (a node cannot be its own parent) with 400.
-- `DELETE /{hierarchy_id}` → 400 if it has children or assigned users; else delete.
+- `POST ""` → create office. Validate `parent_id` exists if provided. Returns `HierarchyOut` (201).
+- `GET ""` → list all offices. Optional query param `level: HierarchyLevel | None` to filter. Returns `list[HierarchyOut]`.
+- `GET "/tree"` → returns the nested `list[HierarchyTreeNode]` built from roots (`parent_id is None`) downward. Build in Python by grouping children by `parent_id`.
+- `GET "/{hierarchy_id}"` → single office or 404.
+- `PUT "/{hierarchy_id}"` → update name/level/parent. Reject if `parent_id == hierarchy_id` (a node cannot be its own parent) with 400.
+- `DELETE "/{hierarchy_id}"` → 400 if it has children or assigned users; else delete.
 
 **User-assignment routes (add to `app/api/v1/endpoints/users.py`):** protect with `Depends(RoleChecker(["Admin", "DoM_Admin"]))`.
-- `GET /` → list all users. Optional query params `role: str | None`, `hierarchy_id: int | None`, `unassigned: bool = False` (filter `User.hierarchy_id.is_(None)`). Return `list[UserListItem]` (include `role_name` and `hierarchy_name` via the relationships).
-- `PATCH /{user_id}/assign` → body `UserAdminUpdate { hierarchy_id: int | None, role_id: int | None }`. Update the user's office/role, commit, write an `AuditLog` row is **not** required here (no ticket), return updated `UserListItem`.
+- `GET ""` → list all users. Optional query params `role: str | None`, `hierarchy_id: int | None`, `unassigned: bool = False` (filter `User.hierarchy_id.is_(None)`). Return `list[UserListItem]` (include `role_name` and `hierarchy_name` via the relationships).
+- `PATCH "/{user_id}/assign"` → body `UserAdminUpdate { hierarchy_id: int | None, role_id: int | None }`. Update the user's office/role, commit, write an `AuditLog` row is **not** required here (no ticket), return updated `UserListItem`.
+
 
 Mount in `app/api/v1/router.py`:
 ```python
