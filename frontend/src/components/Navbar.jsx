@@ -29,6 +29,15 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {(user?.role_name === "Admin" ||
+                  user?.role_name === "DoM_Admin") && (
+                  <Link
+                    to="/admin/categories"
+                    className="text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    Categories
+                  </Link>
+                )}
                 <span className="text-sm text-gray-500">{user?.full_name}</span>
                 <button
                   onClick={handleLogout}

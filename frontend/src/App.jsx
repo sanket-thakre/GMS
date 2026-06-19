@@ -5,6 +5,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import CategoryManagement from "./pages/admin/CategoryManagement";
 
 export default function App() {
   return (
@@ -23,8 +24,17 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/categories"
+            element={
+              <ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}>
+                <CategoryManagement />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
     </div>
   );
 }
+
