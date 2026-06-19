@@ -21,6 +21,7 @@ class UserOut(BaseModel):
 
 
 class UserListItem(UserOut):
+    hierarchy_id: int | None = None
     hierarchy_name: str | None = None
 
 

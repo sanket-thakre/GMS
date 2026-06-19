@@ -52,6 +52,7 @@ def list_users(
             phone=u.phone,
             role_id=u.role_id,
             role_name=u.role.name if u.role else "Unknown",
+            hierarchy_id=u.hierarchy_id,
             hierarchy_name=u.hierarchy.name if u.hierarchy else None,
         )
         for u in query.all()
@@ -84,5 +85,6 @@ def assign_user(
         phone=user.phone,
         role_id=user.role_id,
         role_name=user.role.name if user.role else "Unknown",
+        hierarchy_id=user.hierarchy_id,
         hierarchy_name=user.hierarchy.name if user.hierarchy else None
     )
