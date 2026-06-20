@@ -36,6 +36,19 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {/* ── Complainant links (visible to all authenticated users) ── */}
+                <Link
+                  to="/grievances/new"
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  File Grievance
+                </Link>
+                <Link
+                  to="/grievances"
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  My Grievances
+                </Link>
                 {isOfficer && (
                   <Link
                     to="/officer"
