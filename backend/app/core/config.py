@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Phase 17: Celery + Redis for the background SLA-escalation sweep.
+    # In a compose network the host is `redis`; for a local venv it's localhost.
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
+    SLA_SWEEP_SECONDS: int = 300  # how often beat triggers the sweep (5 min)
+
     model_config = {
         "env_file": Path(__file__).resolve().parents[2] / ".env",
         "extra": "ignore",

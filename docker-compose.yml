@@ -12,5 +12,38 @@ services:
       - gms_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # Phase 17: broker/result backend for the background SLA-escalation sweep.
+  redis:
+    image: redis:7-alpine
+    container_name: gms_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # NOTE: celery_worker/celery_beat use `build: ./backend`, which needs the
+  # backend Dockerfile delivered in Phase 25. Until then, run them locally in
+  # the venv:
+  #   celery -A app.worker.celery_app.celery worker -l info
+  #   celery -A app.worker.celery_app.celery beat   -l info
+  # Inside this compose network the DB host is `postgres:5432` and the broker
+  # is `redis://redis:6379/0` (override DATABASE_URL/CELERY_BROKER_URL via env).
+  celery_worker:
+    build: ./backend
+    command: celery -A app.worker.celery_app.celery worker --loglevel=info
+    env_file: ./backend/.env
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  celery_beat:
+    build: ./backend
+    command: celery -A app.worker.celery_app.celery beat --loglevel=info
+    env_file: ./backend/.env
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
 volumes:
   gms_data:

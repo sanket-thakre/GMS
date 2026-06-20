@@ -10,6 +10,7 @@ from app.models.users import User
 from app.models.hierarchies import Hierarchy, HierarchyLevel
 from app.models.assignment_rules import AssignmentRule
 from app.core.security import get_password_hash
+from app.services.escalation_engine import get_or_create_system_user
 
 ROLES = [
     ("Admin", "Full system administrator"),
@@ -39,6 +40,10 @@ def main():
         db.commit()
 
         admin_role = db.query(Role).filter(Role.name == "Admin").first()
+
+        # Seed the non-login `system` user used to attribute automated
+        # (Phase 17) SLA escalations — audit_logs.action_by_user_id is NOT null.
+        get_or_create_system_user(db)
 
         # Seed default admin user
         admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()

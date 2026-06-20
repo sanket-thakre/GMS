@@ -13,7 +13,6 @@ from app.core.ticketing import UPLOAD_DIR, compute_due_date, generate_ticket_num
 from app.models.attachments import TicketAttachment
 from app.models.audit_logs import ActionType, AuditLog
 from app.models.categories import GrievanceSubcategory
-from app.models.hierarchies import Hierarchy
 from app.models.tickets import Ticket, TicketPriority, TicketStatus
 from app.models.users import User
 from app.schemas.assignment import TicketTransfer
@@ -24,7 +23,9 @@ from app.schemas.ticket import (
     TicketOut,
     TicketStatusUpdate,
 )
+from app.services import escalation_engine
 from app.services.assignment_engine import reassign, resolve_office
+from app.services.escalation_engine import EscalationCeilingError
 
 # Roles whose ticket view is scoped to their own assigned office.
 OFFICER_ROLES = {"APMC_Officer", "DDR_Officer"}
@@ -406,9 +407,11 @@ def escalate_ticket(
 ):
     """Manually escalate a ticket to its parent office (Phase 18).
 
-    Moves the ticket up one level in the hierarchy, sets status to Escalated,
-    and records the supplied reason in the audit log. Admin/DoM_Admin may
-    escalate any ticket; an officer only tickets in their own office.
+    Authorization/ownership is enforced here; the move itself (reassign to the
+    parent office, status→Escalated, fresh SLA window, audit row) is delegated
+    to the shared escalation engine (Phase 17) so manual and automated
+    escalations behave identically. Admin/DoM_Admin may escalate any ticket; an
+    officer only tickets in their own office.
     """
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if ticket is None:
@@ -423,29 +426,16 @@ def escalate_ticket(
                 detail="You can only escalate tickets assigned to your office",
             )
 
-    current_office = (
-        db.query(Hierarchy).filter(Hierarchy.id == ticket.assigned_hierarchy_id).first()
-    )
-    if current_office is None or current_office.parent_id is None:
+    try:
+        ticket = escalation_engine.escalate_ticket(
+            db, ticket, actor_user_id=current_user.id, reason=body.reason
+        )
+    except EscalationCeilingError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This ticket is already at the top-level office and cannot be escalated further",
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    previous_state = ticket.status.value
-    ticket.assigned_hierarchy_id = current_office.parent_id
-    ticket.status = TicketStatus.Escalated
-
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=current_user.id,
-            action_type=ActionType.Escalated,
-            previous_state=previous_state,
-            new_state=f"Escalated | Reason: {body.reason}",
-        )
-    )
-
-    db.commit()
-    db.refresh(ticket)
     return _to_out(ticket)
