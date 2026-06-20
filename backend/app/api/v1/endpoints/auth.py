@@ -72,5 +72,6 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             phone=user.phone,
             role_id=user.role_id,
             role_name=role.name if role else "Unknown",
+            hierarchy_id=user.hierarchy_id,
         ),
     }
