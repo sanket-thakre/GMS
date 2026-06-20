@@ -1,11 +1,10 @@
 import api from "./api";
 
-// `payload` is a FormData instance carrying subcategory_id, description,
+// `formData` is a FormData instance carrying subcategory_id, description,
 // priority, and any files[] so attachments ride along with the request.
-export const createTicket = (formData) =>
-  api.post("/tickets/", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+// Note: do NOT hand-set Content-Type — let Axios/the browser add the
+// `multipart/form-data; boundary=…` header so the server can parse the upload.
+export const createTicket = (formData) => api.post("/tickets/", formData);
 
 export const getTicket = (id) => api.get(`/tickets/${id}`);
 
