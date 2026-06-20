@@ -16,6 +16,7 @@ class UserOut(BaseModel):
     phone: str | None
     role_id: int
     role_name: str
+    hierarchy_id: int | None = None
 
     model_config = {"from_attributes": True}
 

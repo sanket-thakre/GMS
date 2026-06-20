@@ -17,3 +17,7 @@ export const listTickets = (params = {}) => api.get("/tickets", { params });
 // Phase 15: officer status transition. Returns the updated TicketOut.
 export const updateTicketStatus = (id, status, note = null) =>
   api.patch(`/tickets/${id}/status`, { status, note });
+
+// Phase 18: manual escalation. `payload` must include `reason`.
+export const escalateTicket = (id, payload) =>
+  api.post(`/tickets/${id}/escalate`, payload);

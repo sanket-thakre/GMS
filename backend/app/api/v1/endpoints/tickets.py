@@ -16,10 +16,12 @@ from app.models.hierarchies import Hierarchy, HierarchyLevel
 from app.models.tickets import Ticket, TicketPriority, TicketStatus
 from app.models.users import User
 from app.schemas.ticket import (
+    EscalateRequest,
     PaginatedTickets,
     TicketListItem,
     TicketOut,
     TicketStatusUpdate,
+    TransferRequest,
 )
 
 # Roles whose ticket view is scoped to their own assigned office.
@@ -333,6 +335,115 @@ def update_ticket_status(
             action_by_user_id=current_user.id,
             action_type=action,
             previous_state=previous_state,
+            new_state=new_state,
+        )
+    )
+
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+@router.post(
+    "/{ticket_id}/escalate",
+    response_model=TicketOut,
+    dependencies=[Depends(RoleChecker(["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"]))],
+)
+def escalate_ticket(
+    ticket_id: int,
+    body: EscalateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    role_name = current_user.role.name if current_user.role else None
+
+    if role_name not in ("DoM_Admin", "Admin"):
+        if ticket.assigned_hierarchy_id != current_user.hierarchy_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only escalate tickets assigned to your office",
+            )
+
+    current_office = db.query(Hierarchy).filter(Hierarchy.id == ticket.assigned_hierarchy_id).first()
+    if current_office is None or current_office.parent_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This ticket is already at the top-level office and cannot be escalated further",
+        )
+
+    previous_state = ticket.status.value
+    ticket.assigned_hierarchy_id = current_office.parent_id
+    ticket.status = TicketStatus.Escalated
+
+    db.add(
+        AuditLog(
+            ticket_id=ticket.id,
+            action_by_user_id=current_user.id,
+            action_type=ActionType.Escalated,
+            previous_state=previous_state,
+            new_state=f"Escalated | Reason: {body.reason}",
+        )
+    )
+
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+@router.post(
+    "/{ticket_id}/transfer",
+    response_model=TicketOut,
+    dependencies=[Depends(RoleChecker(["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"]))],
+)
+def transfer_ticket(
+    ticket_id: int,
+    body: TransferRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    role_name = current_user.role.name if current_user.role else None
+
+    if role_name not in ("DoM_Admin", "Admin"):
+        if ticket.assigned_hierarchy_id != current_user.hierarchy_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only transfer tickets assigned to your office",
+            )
+
+    target_office = db.query(Hierarchy).filter(Hierarchy.id == body.hierarchy_id).first()
+    if target_office is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target office not found",
+        )
+
+    if body.hierarchy_id == ticket.assigned_hierarchy_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target office is the same as the current office",
+        )
+
+    previous_office_id = ticket.assigned_hierarchy_id
+    ticket.assigned_hierarchy_id = body.hierarchy_id
+
+    new_state = f"Transferred to office {body.hierarchy_id}"
+    if body.reason:
+        new_state = f"{new_state} | Reason: {body.reason}"
+
+    db.add(
+        AuditLog(
+            ticket_id=ticket.id,
+            action_by_user_id=current_user.id,
+            action_type=ActionType.Transferred,
+            previous_state=f"Office {previous_office_id}",
             new_state=new_state,
         )
     )
