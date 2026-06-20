@@ -7,6 +7,8 @@ Run from the backend/ directory:  python seed_dev.py
 from app.db.session import SessionLocal
 from app.models.roles import Role
 from app.models.users import User
+from app.models.hierarchies import Hierarchy, HierarchyLevel
+from app.models.assignment_rules import AssignmentRule
 from app.core.security import get_password_hash
 
 ROLES = [
@@ -21,6 +23,10 @@ ROLES = [
 
 ADMIN_EMAIL = "admin@gms.gov"
 ADMIN_PASSWORD = "Admin@123"
+
+# A default intake office + catch-all assignment rule so tickets can be filed
+# out of the box (Phase 14 makes ticket creation rule-gated).
+DEFAULT_OFFICE_NAME = "Default Intake Office"
 
 def main():
     db = SessionLocal()
@@ -48,6 +54,44 @@ def main():
             print(f"Created admin user: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
         else:
             print(f"Admin user already exists: {ADMIN_EMAIL}")
+
+        # Seed a default intake office (APMC) for the catch-all rule to target.
+        office = (
+            db.query(Hierarchy)
+            .filter(Hierarchy.name == DEFAULT_OFFICE_NAME)
+            .first()
+        )
+        if not office:
+            office = Hierarchy(
+                name=DEFAULT_OFFICE_NAME,
+                level=HierarchyLevel.APMC,
+                parent_id=None,
+            )
+            db.add(office)
+            db.commit()
+            db.refresh(office)
+            print(f"Created default office: {office.name} (id={office.id})")
+        else:
+            print(f"Default office already exists: {office.name} (id={office.id})")
+
+        # Seed a catch-all (wildcard) default assignment rule so ticket creation
+        # resolves an office even before any category-specific rules are added.
+        default_rule = (
+            db.query(AssignmentRule)
+            .filter(AssignmentRule.is_default.is_(True))
+            .first()
+        )
+        if not default_rule:
+            db.add(AssignmentRule(
+                category_id=None,
+                hierarchy_id=office.id,
+                is_default=True,
+                priority_order=100,
+            ))
+            db.commit()
+            print(f"Created default assignment rule -> {office.name}")
+        else:
+            print(f"Default assignment rule already exists (-> hierarchy_id={default_rule.hierarchy_id})")
 
         print("Roles in DB:", sorted(r.name for r in db.query(Role).all()))
     finally:
