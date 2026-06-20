@@ -1,0 +1,149 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getTicket } from "../../services/ticketService";
+import StatusUpdateControl from "../../components/StatusUpdateControl";
+
+const STATUS_COLORS = {
+  Open: "bg-blue-100 text-blue-700",
+  In_Progress: "bg-yellow-100 text-yellow-700",
+  Escalated: "bg-orange-100 text-orange-700",
+  Resolved: "bg-green-100 text-green-700",
+  Closed: "bg-gray-100 text-gray-600",
+};
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+      <span className="text-sm text-gray-800 font-medium text-right">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+export default function TicketDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getTicket(id)
+      .then((res) => setTicket(res.data))
+      .catch((err) => setError(err.response?.data?.detail ?? "Failed to load ticket."))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-4">{error}</div>
+    );
+  }
+
+  if (!ticket) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Back nav */}
+      <button
+        onClick={() => navigate("/officer")}
+        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+      >
+        ← Back to Dashboard
+      </button>
+
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-bold text-gray-900 font-mono">{ticket.ticket_number}</h1>
+        <span
+          className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ticket.status] ?? "bg-gray-100"}`}
+        >
+          {ticket.status.replace("_", " ")}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Ticket details */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Core info */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Ticket Information</h2>
+            <InfoRow label="Ticket #" value={ticket.ticket_number} />
+            <InfoRow label="Status" value={ticket.status.replace("_", " ")} />
+            <InfoRow label="Priority" value={ticket.priority} />
+            <InfoRow label="Subcategory ID" value={ticket.subcategory_id} />
+            <InfoRow label="Assigned Office ID" value={ticket.assigned_hierarchy_id} />
+            <InfoRow label="Complainant ID" value={ticket.complainant_id} />
+            <InfoRow
+              label="Created"
+              value={new Date(ticket.created_at).toLocaleString()}
+            />
+            <InfoRow
+              label="Due Date"
+              value={ticket.due_date ? new Date(ticket.due_date).toLocaleString() : "—"}
+            />
+            {ticket.resolved_at && (
+              <InfoRow
+                label="Resolved At"
+                value={new Date(ticket.resolved_at).toLocaleString()}
+              />
+            )}
+          </div>
+
+          {/* Description */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-2">Description</h2>
+            <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+              {ticket.description ?? "No description provided."}
+            </p>
+          </div>
+
+          {/* Attachments */}
+          {ticket.attachments && ticket.attachments.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">Attachments</h2>
+              <ul className="space-y-2">
+                {ticket.attachments.map((a) => (
+                  <li key={a.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">📎</span>
+                    <a
+                      href={`http://${window.location.hostname}:4010${a.url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {a.file_name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Timeline placeholder — Phase 19 */}
+          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-5 text-center text-sm text-gray-400">
+            Activity Timeline — coming in Phase 19
+          </div>
+        </div>
+
+        {/* Right: Status update + future escalation controls */}
+        <div className="space-y-4">
+          <StatusUpdateControl ticket={ticket} onUpdated={setTicket} />
+
+          {/* Escalate / Transfer placeholder — Phase 18 */}
+          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-400">
+            Escalate / Transfer — coming in Phase 18
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

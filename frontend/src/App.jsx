@@ -8,6 +8,10 @@ import Dashboard from "./pages/Dashboard";
 import HierarchyManagement from "./pages/admin/HierarchyManagement";
 import UserAssignment from "./pages/admin/UserAssignment";
 import CategoryManagement from "./pages/admin/CategoryManagement";
+import OfficerDashboard from "./pages/officer/OfficerDashboard";
+import TicketDetail from "./pages/officer/TicketDetail";
+
+const OFFICER_ROLES = ["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"];
 
 export default function App() {
   return (
@@ -47,6 +51,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["Admin", "DoM_Admin"]}>
                 <CategoryManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer"
+            element={
+              <ProtectedRoute allowedRoles={OFFICER_ROLES}>
+                <OfficerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/tickets/:id"
+            element={
+              <ProtectedRoute allowedRoles={OFFICER_ROLES}>
+                <TicketDetail />
               </ProtectedRoute>
             }
           />
