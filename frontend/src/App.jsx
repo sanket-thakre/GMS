@@ -11,6 +11,9 @@ import CategoryManagement from "./pages/admin/CategoryManagement";
 import OfficerDashboard from "./pages/officer/OfficerDashboard";
 import TicketDetail from "./pages/officer/TicketDetail";
 import ExecutiveDashboard from "./pages/executive/ExecutiveDashboard";
+import NewGrievance from "./pages/complainant/NewGrievance";
+import MyGrievances from "./pages/complainant/MyGrievances";
+import GrievanceDetail from "./pages/complainant/GrievanceDetail";
 
 const OFFICER_ROLES = ["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"];
 
@@ -31,6 +34,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          {/* ── Admin routes ── */}
           <Route
             path="/admin/hierarchy"
             element={
@@ -55,6 +59,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          {/* ── Officer routes ── */}
           <Route
             path="/officer"
             element={
@@ -76,6 +81,31 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["DoM_Admin", "Admin"]}>
                 <ExecutiveDashboard />
+              </ProtectedRoute>
+            }
+          />
+          {/* ── Complainant / Grievance routes (any authenticated user) ── */}
+          <Route
+            path="/grievances/new"
+            element={
+              <ProtectedRoute>
+                <NewGrievance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/grievances"
+            element={
+              <ProtectedRoute>
+                <MyGrievances />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/grievances/:id"
+            element={
+              <ProtectedRoute>
+                <GrievanceDetail />
               </ProtectedRoute>
             }
           />

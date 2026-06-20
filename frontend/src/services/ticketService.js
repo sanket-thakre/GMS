@@ -14,6 +14,10 @@ export const getTicket = (id) => api.get(`/tickets/${id}`);
 // search, sort_by, order, page, page_size. Returns PaginatedTickets.
 export const listTickets = (params = {}) => api.get("/tickets", { params });
 
+// Phase 12: convenience for the complainant "My Grievances" page.
+export const listMyTickets = (params = {}) =>
+  listTickets({ mine: true, ...params });
+
 // Phase 15: officer status transition. Returns the updated TicketOut.
 export const updateTicketStatus = (id, status, note = null) =>
   api.patch(`/tickets/${id}/status`, { status, note });
