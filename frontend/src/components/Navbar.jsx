@@ -47,6 +47,12 @@ export default function Navbar() {
                 {isAdmin && (
                   <>
                     <Link
+                      to="/executive"
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Executive
+                    </Link>
+                    <Link
                       to="/admin/hierarchy"
                       className="text-sm text-gray-600 hover:text-gray-900"
                     >
