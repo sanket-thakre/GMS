@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import SlaIndicator from "./SlaIndicator";
 
 const STATUS_COLORS = {
   Open: "bg-blue-100 text-blue-700",
@@ -25,15 +26,26 @@ function StatusBadge({ status }) {
   );
 }
 
-function DueDot({ dueDate }) {
-  if (!dueDate) return null;
-  const now = new Date();
-  const due = new Date(dueDate);
-  const hoursLeft = (due - now) / 36e5;
-  let color = "bg-green-500";
-  if (hoursLeft < 0) color = "bg-red-500";
-  else if (hoursLeft < 24) color = "bg-yellow-400";
-  return <span className={`inline-block w-2 h-2 rounded-full ${color} mr-1`} title={due.toLocaleString()} />;
+// Phase 16: legend explaining the SLA dot colors, shown above the table.
+const LEGEND = [
+  { label: "On track", dot: "bg-green-500" },
+  { label: "Due soon", dot: "bg-amber-500" },
+  { label: "Critical", dot: "bg-red-500" },
+  { label: "Breached", dot: "bg-red-700" },
+];
+
+function SlaLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-4 px-1 pb-2 text-xs text-gray-500">
+      <span className="font-medium text-gray-400">SLA:</span>
+      {LEGEND.map((item) => (
+        <span key={item.label} className="inline-flex items-center gap-1.5">
+          <span className={`inline-block w-2 h-2 rounded-full ${item.dot}`} />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function TicketTable({ tickets, basePath = "/officer/tickets" }) {
@@ -46,7 +58,9 @@ export default function TicketTable({ tickets, basePath = "/officer/tickets" }) 
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div>
+      <SlaLegend />
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
@@ -82,8 +96,13 @@ export default function TicketTable({ tickets, basePath = "/officer/tickets" }) 
                 {new Date(t.created_at).toLocaleDateString()}
               </td>
               <td className="px-4 py-3 text-gray-500">
-                <DueDot dueDate={t.due_date} />
-                {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                <SlaIndicator
+                  slaStatus={t.sla_status}
+                  secondsRemaining={t.time_remaining_seconds}
+                />
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                </div>
               </td>
               <td className="px-4 py-3">
                 <button
@@ -100,6 +119,7 @@ export default function TicketTable({ tickets, basePath = "/officer/tickets" }) 
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

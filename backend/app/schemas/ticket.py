@@ -52,6 +52,9 @@ class TicketOut(BaseModel):
     due_date: datetime | None = None
     resolved_at: datetime | None = None
     attachments: list[AttachmentOut] = []
+    # Phase 16: derived SLA standing (computed at serialization, never stored).
+    sla_status: str = "green"
+    time_remaining_seconds: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -70,6 +73,9 @@ class TicketListItem(BaseModel):
     subcategory_name: str | None = None
     category_name: str | None = None
     assigned_office_name: str | None = None
+    # Phase 16: derived SLA standing (computed at serialization, never stored).
+    sla_status: str = "green"
+    time_remaining_seconds: int | None = None
 
     model_config = {"from_attributes": True}
 

@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import RoleChecker, get_current_user, get_db
+from app.core.sla import compute_sla
 from app.core.ticketing import UPLOAD_DIR, compute_due_date, generate_ticket_number
 from app.models.attachments import TicketAttachment
 from app.models.audit_logs import ActionType, AuditLog
@@ -128,11 +129,13 @@ def create_ticket(
     # 7. Commit and return.
     db.commit()
     db.refresh(ticket)
-    return ticket
+    return _to_out(ticket)
 
 
 def _to_list_item(t: Ticket) -> TicketListItem:
     sub = t.subcategory
+    # Phase 16: derive SLA standing from due_date vs now (never stored).
+    sla = compute_sla(t.due_date, t.status, created_at=t.created_at)
     return TicketListItem(
         id=t.id,
         ticket_number=t.ticket_number,
@@ -146,7 +149,18 @@ def _to_list_item(t: Ticket) -> TicketListItem:
         subcategory_name=sub.name if sub else None,
         category_name=sub.category.name if sub and sub.category else None,
         assigned_office_name=t.assigned_hierarchy.name if t.assigned_hierarchy else None,
+        sla_status=sla["sla_status"],
+        time_remaining_seconds=sla["time_remaining_seconds"],
     )
+
+
+def _to_out(t: Ticket) -> TicketOut:
+    """Serialize a single ticket to TicketOut, enriched with derived SLA standing."""
+    out = TicketOut.model_validate(t)
+    sla = compute_sla(t.due_date, t.status, created_at=t.created_at)
+    out.sla_status = sla["sla_status"]
+    out.time_remaining_seconds = sla["time_remaining_seconds"]
+    return out
 
 
 @router.get("", response_model=PaginatedTickets)
@@ -254,7 +268,7 @@ def get_ticket(
             detail="Permission denied: Insufficient privileges",
         )
 
-    return ticket
+    return _to_out(ticket)
 
 
 # Allowed status transitions. Escalation transitions are handled in Phases 17/18.
@@ -335,7 +349,7 @@ def update_ticket_status(
 
     db.commit()
     db.refresh(ticket)
-    return ticket
+    return _to_out(ticket)
 
 
 @router.post(
@@ -376,7 +390,7 @@ def transfer_ticket(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
-    return ticket
+    return _to_out(ticket)
 
 
 @router.post(
@@ -434,4 +448,4 @@ def escalate_ticket(
 
     db.commit()
     db.refresh(ticket)
-    return ticket
+    return _to_out(ticket)
