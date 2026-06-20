@@ -18,6 +18,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         phone=current_user.phone,
         role_id=current_user.role_id,
         role_name=current_user.role.name if current_user.role else "Unknown",
+        hierarchy_id=current_user.hierarchy_id,
     )
 
 

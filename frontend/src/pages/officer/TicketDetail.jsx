@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getTicket } from "../../services/ticketService";
+import { useAuth } from "../../context/AuthContext";
 import StatusUpdateControl from "../../components/StatusUpdateControl";
+import EscalateModal from "../../components/EscalateModal";
+import TransferModal from "../../components/TransferModal";
 
 const STATUS_COLORS = {
   Open: "bg-blue-100 text-blue-700",
@@ -20,12 +23,19 @@ function InfoRow({ label, value }) {
   );
 }
 
+const TERMINAL_STATUSES = new Set(["Resolved", "Closed"]);
+const ADMIN_ROLES = new Set(["Admin", "DoM_Admin"]);
+
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showEscalate, setShowEscalate] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [actionToast, setActionToast] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +44,20 @@ export default function TicketDetail() {
       .catch((err) => setError(err.response?.data?.detail ?? "Failed to load ticket."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleActionSuccess = (updatedTicket, label) => {
+    setTicket(updatedTicket);
+    setShowEscalate(false);
+    setShowTransfer(false);
+    setActionToast(label);
+    setTimeout(() => setActionToast(null), 4000);
+  };
+
+  const canActOnTicket = ticket && user && (
+    ADMIN_ROLES.has(user.role_name) ||
+    ticket.assigned_hierarchy_id === user.hierarchy_id
+  );
+  const actionsVisible = ticket && !TERMINAL_STATUSES.has(ticket.status) && canActOnTicket;
 
   if (loading) {
     return (
@@ -53,6 +77,13 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-4">
+      {/* Success toast */}
+      {actionToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-lg">
+          {actionToast}
+        </div>
+      )}
+
       {/* Back nav */}
       <button
         onClick={() => navigate("/officer")}
@@ -138,12 +169,50 @@ export default function TicketDetail() {
         <div className="space-y-4">
           <StatusUpdateControl ticket={ticket} onUpdated={setTicket} />
 
-          {/* Escalate / Transfer placeholder — Phase 18 */}
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-400">
-            Escalate / Transfer — coming in Phase 18
-          </div>
+          {/* Actions: Escalate / Transfer */}
+          {actionsVisible ? (
+            <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700">Actions</h3>
+              <button
+                onClick={() => setShowEscalate(true)}
+                className="w-full py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
+              >
+                Escalate to Parent Office
+              </button>
+              <button
+                onClick={() => setShowTransfer(true)}
+                className="w-full py-2 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
+              >
+                Transfer to Another Office
+              </button>
+            </div>
+          ) : ticket && TERMINAL_STATUSES.has(ticket.status) ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-xs text-gray-400">
+              Actions unavailable for {ticket.status.replace("_", " ")} tickets.
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {/* Modals */}
+      {showEscalate && ticket && (
+        <EscalateModal
+          ticket={ticket}
+          onClose={() => setShowEscalate(false)}
+          onSuccess={(updated) =>
+            handleActionSuccess(updated, "Ticket escalated successfully.")
+          }
+        />
+      )}
+      {showTransfer && ticket && (
+        <TransferModal
+          ticket={ticket}
+          onClose={() => setShowTransfer(false)}
+          onSuccess={(updated) =>
+            handleActionSuccess(updated, "Ticket transferred successfully.")
+          }
+        />
+      )}
     </div>
   );
 }

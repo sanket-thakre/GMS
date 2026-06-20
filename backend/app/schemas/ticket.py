@@ -8,6 +8,10 @@ class TicketStatusUpdate(BaseModel):
     note: str | None = None
 
 
+class EscalateRequest(BaseModel):
+    reason: str
+
+
 class TicketCreate(BaseModel):
     """Documentation/validation model for the create payload.
 

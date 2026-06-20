@@ -12,10 +12,12 @@ from app.core.ticketing import UPLOAD_DIR, compute_due_date, generate_ticket_num
 from app.models.attachments import TicketAttachment
 from app.models.audit_logs import ActionType, AuditLog
 from app.models.categories import GrievanceSubcategory
+from app.models.hierarchies import Hierarchy
 from app.models.tickets import Ticket, TicketPriority, TicketStatus
 from app.models.users import User
 from app.schemas.assignment import TicketTransfer
 from app.schemas.ticket import (
+    EscalateRequest,
     PaginatedTickets,
     TicketListItem,
     TicketOut,
@@ -374,4 +376,62 @@ def transfer_ticket(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
+    return ticket
+
+
+@router.post(
+    "/{ticket_id}/escalate",
+    response_model=TicketOut,
+    dependencies=[Depends(RoleChecker(["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"]))],
+)
+def escalate_ticket(
+    ticket_id: int,
+    body: EscalateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually escalate a ticket to its parent office (Phase 18).
+
+    Moves the ticket up one level in the hierarchy, sets status to Escalated,
+    and records the supplied reason in the audit log. Admin/DoM_Admin may
+    escalate any ticket; an officer only tickets in their own office.
+    """
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    role_name = current_user.role.name if current_user.role else None
+
+    if role_name not in ("DoM_Admin", "Admin"):
+        if ticket.assigned_hierarchy_id != current_user.hierarchy_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only escalate tickets assigned to your office",
+            )
+
+    current_office = (
+        db.query(Hierarchy).filter(Hierarchy.id == ticket.assigned_hierarchy_id).first()
+    )
+    if current_office is None or current_office.parent_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This ticket is already at the top-level office and cannot be escalated further",
+        )
+
+    previous_state = ticket.status.value
+    ticket.assigned_hierarchy_id = current_office.parent_id
+    ticket.status = TicketStatus.Escalated
+
+    db.add(
+        AuditLog(
+            ticket_id=ticket.id,
+            action_by_user_id=current_user.id,
+            action_type=ActionType.Escalated,
+            previous_state=previous_state,
+            new_state=f"Escalated | Reason: {body.reason}",
+        )
+    )
+
+    db.commit()
+    db.refresh(ticket)
     return ticket

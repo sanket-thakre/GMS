@@ -1,7 +1,7 @@
 import api from "./api";
 
 // Phase 14: Assignment Engine. Rule CRUD is admin-only; the manual-transfer
-// UI itself is delivered in Phase 18 — these are the service stubs.
+// UI is delivered in Phase 18 and reuses transferTicket below.
 
 // ── Assignment Rules (admin) ─────────────────────────────────────────
 export const listRules = () => api.get("/assignment-rules");
@@ -15,5 +15,5 @@ export const deleteRule = (id) => api.delete(`/assignment-rules/${id}`);
 
 // ── Manual transfer ──────────────────────────────────────────────────
 // payload: { hierarchy_id: number, reason?: string }
-export const transferTicket = (ticketId, payload) =>
-  api.post(`/tickets/${ticketId}/transfer`, payload);
+export const transferTicket = (id, payload) =>
+  api.post(`/tickets/${id}/transfer`, payload);
