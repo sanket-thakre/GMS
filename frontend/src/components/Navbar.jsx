@@ -11,6 +11,11 @@ export default function Navbar() {
   };
 
   const isAdmin = user?.role_name === "Admin" || user?.role_name === "DoM_Admin";
+  const isOfficer =
+    user?.role_name === "APMC_Officer" ||
+    user?.role_name === "DDR_Officer" ||
+    user?.role_name === "DoM_Admin" ||
+    user?.role_name === "Admin";
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -31,6 +36,14 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {isOfficer && (
+                  <Link
+                    to="/officer"
+                    className="text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    My Tickets
+                  </Link>
+                )}
                 {isAdmin && (
                   <>
                     <Link

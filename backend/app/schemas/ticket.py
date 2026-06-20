@@ -3,6 +3,11 @@ from pydantic import BaseModel, computed_field
 from app.models.tickets import TicketStatus, TicketPriority
 
 
+class TicketStatusUpdate(BaseModel):
+    status: TicketStatus
+    note: str | None = None
+
+
 class TicketCreate(BaseModel):
     """Documentation/validation model for the create payload.
 
@@ -41,6 +46,7 @@ class TicketOut(BaseModel):
     complainant_id: int
     created_at: datetime
     due_date: datetime | None = None
+    resolved_at: datetime | None = None
     attachments: list[AttachmentOut] = []
 
     model_config = {"from_attributes": True}

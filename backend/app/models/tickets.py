@@ -33,6 +33,7 @@ class Ticket(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     due_date = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
     complainant = relationship("User", back_populates="filed_tickets", foreign_keys=[complainant_id])
     subcategory = relationship("GrievanceSubcategory", back_populates="tickets")
