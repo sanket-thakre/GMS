@@ -12,15 +12,16 @@ from app.core.ticketing import UPLOAD_DIR, compute_due_date, generate_ticket_num
 from app.models.attachments import TicketAttachment
 from app.models.audit_logs import ActionType, AuditLog
 from app.models.categories import GrievanceSubcategory
-from app.models.hierarchies import Hierarchy, HierarchyLevel
 from app.models.tickets import Ticket, TicketPriority, TicketStatus
 from app.models.users import User
+from app.schemas.assignment import TicketTransfer
 from app.schemas.ticket import (
     PaginatedTickets,
     TicketListItem,
     TicketOut,
     TicketStatusUpdate,
 )
+from app.services.assignment_engine import reassign, resolve_office
 
 # Roles whose ticket view is scoped to their own assigned office.
 OFFICER_ROLES = {"APMC_Officer", "DDR_Officer"}
@@ -30,30 +31,6 @@ router = APIRouter()
 
 # Roles permitted to view any ticket (officers/admins), beyond the complainant owner.
 STAFF_ROLES = {"Admin", "DoM_Admin", "DDR_Officer", "APMC_Officer"}
-
-
-def _resolve_default_office(db: Session) -> Hierarchy:
-    """Pick a triage office for a newly filed ticket.
-
-    TODO(phase14): replace this placeholder with the real Assignment Engine.
-    Until then, prefer the first APMC office (front-line intake); fall back to
-    any office. `assigned_hierarchy_id` is NOT NULL, so if no office exists yet
-    (hierarchy not configured — Phase 9), we cannot file a ticket.
-    """
-    office = (
-        db.query(Hierarchy)
-        .filter(Hierarchy.level == HierarchyLevel.APMC)
-        .order_by(Hierarchy.id)
-        .first()
-    )
-    if office is None:
-        office = db.query(Hierarchy).order_by(Hierarchy.id).first()
-    if office is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No office is configured to receive grievances. Configure the hierarchy first.",
-        )
-    return office
 
 
 @router.post("/", response_model=TicketOut, status_code=status.HTTP_201_CREATED)
@@ -80,8 +57,16 @@ def create_ticket(
     # 2. Unique ticket number.
     ticket_number = generate_ticket_number(db)
 
-    # 3. Assignment placeholder (TODO(phase14): Assignment Engine).
-    office = _resolve_default_office(db)
+    # 3. Route to the correct office via the Assignment Engine (Phase 14).
+    try:
+        office = resolve_office(
+            db, subcategory_id=subcategory.id, complainant=current_user
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
 
     # 4. SLA due date (created_at is server-set; compute from now in UTC).
     now = datetime.now(timezone.utc)
@@ -118,7 +103,7 @@ def create_ticket(
             )
         )
 
-    # 6. First audit-log row.
+    # 6. Audit rows: ticket created, plus the initial routing decision.
     db.add(
         AuditLog(
             ticket_id=ticket.id,
@@ -126,6 +111,15 @@ def create_ticket(
             action_type=ActionType.Created,
             previous_state=None,
             new_state=TicketStatus.Open.value,
+        )
+    )
+    db.add(
+        AuditLog(
+            ticket_id=ticket.id,
+            action_by_user_id=current_user.id,
+            action_type=ActionType.Transferred,
+            previous_state=None,
+            new_state=office.name,
         )
     )
 
@@ -339,4 +333,45 @@ def update_ticket_status(
 
     db.commit()
     db.refresh(ticket)
+    return ticket
+
+
+@router.post(
+    "/{ticket_id}/transfer",
+    response_model=TicketOut,
+    dependencies=[Depends(RoleChecker(["Admin", "DoM_Admin", "DDR_Officer", "APMC_Officer"]))],
+)
+def transfer_ticket(
+    ticket_id: int,
+    body: TicketTransfer,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually re-route a ticket to another office (Phase 14).
+
+    Admin/DoM_Admin may transfer any ticket; an officer may only transfer
+    tickets currently assigned to their own office. The move is recorded in
+    the audit log (action_type=Transferred) by the engine's `reassign`.
+    """
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    role_name = current_user.role.name if current_user.role else None
+
+    # Non-admin officers may only transfer tickets in their own office.
+    if role_name not in ("DoM_Admin", "Admin"):
+        if ticket.assigned_hierarchy_id != current_user.hierarchy_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only transfer tickets assigned to your office",
+            )
+
+    try:
+        ticket = reassign(
+            db, ticket, body.hierarchy_id, current_user, reason=body.reason
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
     return ticket

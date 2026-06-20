@@ -6,3 +6,4 @@ from app.models.categories import GrievanceCategory, GrievanceSubcategory
 from app.models.tickets import Ticket
 from app.models.attachments import TicketAttachment
 from app.models.audit_logs import AuditLog
+from app.models.assignment_rules import AssignmentRule
