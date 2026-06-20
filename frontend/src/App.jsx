@@ -10,6 +10,7 @@ import UserAssignment from "./pages/admin/UserAssignment";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import OfficerDashboard from "./pages/officer/OfficerDashboard";
 import TicketDetail from "./pages/officer/TicketDetail";
+import ExecutiveDashboard from "./pages/executive/ExecutiveDashboard";
 
 const OFFICER_ROLES = ["APMC_Officer", "DDR_Officer", "DoM_Admin", "Admin"];
 
@@ -67,6 +68,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={OFFICER_ROLES}>
                 <TicketDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/executive"
+            element={
+              <ProtectedRoute allowedRoles={["DoM_Admin", "Admin"]}>
+                <ExecutiveDashboard />
               </ProtectedRoute>
             }
           />
