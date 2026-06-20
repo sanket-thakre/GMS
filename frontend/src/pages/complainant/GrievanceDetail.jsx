@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getTicket } from "../../services/ticketService";
 import StatusBadge from "../../components/StatusBadge";
+import TicketTimeline from "../../components/TicketTimeline";
 
 /**
  * GrievanceDetail — full detail view for a single ticket.
@@ -42,11 +43,16 @@ export default function GrievanceDetail() {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [prevId, setPrevId] = useState(null);
+
+  if (id !== prevId) {
+    setPrevId(id);
+    setLoading(true);
+    setError(null);
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     getTicket(id)
       .then((res) => {
         if (!cancelled) setTicket(res.data);
@@ -245,27 +251,10 @@ export default function GrievanceDetail() {
         )}
       </div>
 
-      {/* ── Timeline placeholder (Phase 19) ── */}
+      {/* ── Timeline (Phase 19) ── */}
       <div className="rounded-2xl bg-white shadow-lg p-6 sm:p-8">
-        <h2 className="text-lg font-bold text-gray-900">Timeline</h2>
-        <div className="mt-4 flex items-center gap-3 rounded-lg bg-gray-50 p-4">
-          <svg
-            className="h-5 w-5 text-gray-400 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <p className="text-sm text-gray-500">
-            Detailed activity timeline will be available in a future update.
-          </p>
-        </div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Timeline</h2>
+        <TicketTimeline ticketId={ticket.id} />
       </div>
     </div>
   );

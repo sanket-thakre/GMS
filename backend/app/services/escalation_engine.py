@@ -27,7 +27,8 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
-from app.models.audit_logs import ActionType, AuditLog
+from app.models.audit_logs import ActionType
+from app.services.audit import record_audit
 from app.models.hierarchies import Hierarchy
 from app.models.roles import Role
 from app.models.tickets import Ticket, TicketStatus
@@ -128,14 +129,13 @@ def escalate_ticket(
     ticket.assigned_hierarchy_id = parent_office.id
     ticket.status = TicketStatus.Escalated
 
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=actor_user_id,
-            action_type=ActionType.Escalated,
-            previous_state=previous_office_name,
-            new_state=f"{parent_office.name} | Reason: {reason}",
-        )
+    record_audit(
+        db,
+        ticket_id=ticket.id,
+        actor_user_id=actor_user_id,
+        action_type=ActionType.Escalated,
+        previous_state=previous_office_name,
+        new_state=f"{parent_office.name} | Reason: {reason}",
     )
 
     db.commit()

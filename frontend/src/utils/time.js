@@ -33,3 +33,26 @@ export function formatRemaining(seconds) {
   if (seconds <= 0) return `Overdue by ${humanizeDuration(seconds)}`;
   return `${humanizeDuration(seconds)} left`;
 }
+
+// Phase 19: relative timestamp formatting (e.g., "2h ago", "3d ago", or date)
+export function relativeTime(iso) {
+  if (!iso) return "";
+  const then = new Date(iso);
+  const now = new Date();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+
+  return then.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}

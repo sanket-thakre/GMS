@@ -16,6 +16,7 @@ from app.models.categories import GrievanceSubcategory
 from app.models.tickets import Ticket, TicketPriority, TicketStatus
 from app.models.users import User
 from app.schemas.assignment import TicketTransfer
+from app.schemas.audit import AuditEntryOut
 from app.schemas.ticket import (
     EscalateRequest,
     PaginatedTickets,
@@ -25,6 +26,7 @@ from app.schemas.ticket import (
 )
 from app.services import escalation_engine
 from app.services.assignment_engine import reassign, resolve_office
+from app.services.audit import record_audit
 from app.services.escalation_engine import EscalationCeilingError
 
 # Roles whose ticket view is scoped to their own assigned office.
@@ -108,23 +110,21 @@ def create_ticket(
         )
 
     # 6. Audit rows: ticket created, plus the initial routing decision.
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=current_user.id,
-            action_type=ActionType.Created,
-            previous_state=None,
-            new_state=TicketStatus.Open.value,
-        )
+    record_audit(
+        db,
+        ticket_id=ticket.id,
+        actor_user_id=current_user.id,
+        action_type=ActionType.Created,
+        previous_state=None,
+        new_state=TicketStatus.Open.value,
     )
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=current_user.id,
-            action_type=ActionType.Transferred,
-            previous_state=None,
-            new_state=office.name,
-        )
+    record_audit(
+        db,
+        ticket_id=ticket.id,
+        actor_user_id=current_user.id,
+        action_type=ActionType.Transferred,
+        previous_state=None,
+        new_state=office.name,
     )
 
     # 7. Commit and return.
@@ -277,6 +277,7 @@ _ALLOWED_TRANSITIONS: dict[TicketStatus, set[TicketStatus]] = {
     TicketStatus.Open: {TicketStatus.In_Progress},
     TicketStatus.In_Progress: {TicketStatus.Resolved},
     TicketStatus.Resolved: {TicketStatus.Closed, TicketStatus.In_Progress},
+    TicketStatus.Escalated: {TicketStatus.In_Progress, TicketStatus.Resolved},
 }
 
 
@@ -338,19 +339,71 @@ def update_ticket_status(
     if body.note:
         new_state = f"{new_state} | Note: {body.note}"
 
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=current_user.id,
-            action_type=action,
-            previous_state=previous_state,
-            new_state=new_state,
-        )
+    record_audit(
+        db,
+        ticket_id=ticket.id,
+        actor_user_id=current_user.id,
+        action_type=action,
+        previous_state=previous_state,
+        new_state=new_state,
     )
 
     db.commit()
     db.refresh(ticket)
     return _to_out(ticket)
+
+
+# ---------------------------------------------------------------------------
+# Phase 19 — Audit trail endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{ticket_id}/audit", response_model=list[AuditEntryOut])
+def get_ticket_audit(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the full audit trail for a ticket, ordered chronologically.
+
+    Authorization mirrors GET /tickets/{id}: the complainant who owns the
+    ticket OR any staff member (officer / admin) may view the trail.
+    """
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ticket not found",
+        )
+
+    is_owner = ticket.complainant_id == current_user.id
+    role_name = current_user.role.name if current_user.role else None
+    if not is_owner and role_name not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: you cannot view this ticket's audit trail",
+        )
+
+    rows = (
+        db.query(AuditLog)
+        .filter(AuditLog.ticket_id == ticket_id)
+        .join(User, AuditLog.action_by_user_id == User.id)
+        .order_by(AuditLog.timestamp.asc(), AuditLog.id.asc())
+        .all()
+    )
+
+    return [
+        AuditEntryOut(
+            id=row.id,
+            action_type=row.action_type,
+            previous_state=row.previous_state,
+            new_state=row.new_state,
+            timestamp=row.timestamp,
+            action_by_user_id=row.action_by_user_id,
+            actor_name=row.action_by_user.full_name if row.action_by_user else "Unknown",
+        )
+        for row in rows
+    ]
 
 
 @router.post(

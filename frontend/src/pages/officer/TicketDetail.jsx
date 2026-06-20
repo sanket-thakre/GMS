@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import StatusUpdateControl from "../../components/StatusUpdateControl";
 import EscalateModal from "../../components/EscalateModal";
 import TransferModal from "../../components/TransferModal";
+import TicketTimeline from "../../components/TicketTimeline";
 
 const STATUS_COLORS = {
   Open: "bg-blue-100 text-blue-700",
@@ -36,9 +37,15 @@ export default function TicketDetail() {
   const [showEscalate, setShowEscalate] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [actionToast, setActionToast] = useState(null);
+  const [prevId, setPrevId] = useState(null);
+
+  if (id !== prevId) {
+    setPrevId(id);
+    setLoading(true);
+    setError(null);
+  }
 
   useEffect(() => {
-    setLoading(true);
     getTicket(id)
       .then((res) => setTicket(res.data))
       .catch((err) => setError(err.response?.data?.detail ?? "Failed to load ticket."))
@@ -159,9 +166,10 @@ export default function TicketDetail() {
             </div>
           )}
 
-          {/* Timeline placeholder — Phase 19 */}
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-5 text-center text-sm text-gray-400">
-            Activity Timeline — coming in Phase 19
+          {/* Activity Timeline — Phase 19 */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">Activity Timeline</h2>
+            <TicketTimeline ticketId={ticket.id} />
           </div>
         </div>
 

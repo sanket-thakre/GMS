@@ -10,11 +10,12 @@ Callers map the raised ValueErrors onto HTTP responses (409 for "no rule",
 from sqlalchemy.orm import Session
 
 from app.models.assignment_rules import AssignmentRule
-from app.models.audit_logs import ActionType, AuditLog
+from app.models.audit_logs import ActionType
 from app.models.categories import GrievanceSubcategory
 from app.models.hierarchies import Hierarchy
 from app.models.tickets import Ticket
 from app.models.users import User
+from app.services.audit import record_audit
 
 
 def resolve_office(db: Session, *, subcategory_id: int, complainant: User | None) -> Hierarchy:
@@ -94,14 +95,13 @@ def reassign(
         new_state = f"{new_state} | Reason: {reason}"
 
     ticket.assigned_hierarchy_id = new_office.id
-    db.add(
-        AuditLog(
-            ticket_id=ticket.id,
-            action_by_user_id=actor.id,
-            action_type=ActionType.Transferred,
-            previous_state=previous_name,
-            new_state=new_state,
-        )
+    record_audit(
+        db,
+        ticket_id=ticket.id,
+        actor_user_id=actor.id,
+        action_type=ActionType.Transferred,
+        previous_state=previous_name,
+        new_state=new_state,
     )
     db.commit()
     db.refresh(ticket)

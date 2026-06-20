@@ -24,3 +24,6 @@ export const updateTicketStatus = (id, status, note = null) =>
 // Phase 18: manual escalation. `payload` must include `reason`.
 export const escalateTicket = (id, payload) =>
   api.post(`/tickets/${id}/escalate`, payload);
+
+// Phase 19: fetch the chronological audit trail for a ticket.
+export const getAuditTrail = (id) => api.get(`/tickets/${id}/audit`);
